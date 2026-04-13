@@ -8,10 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourorg/go-server/filter"
-	"github.com/yourorg/go-server/middleware"
-	"github.com/yourorg/go-server/router"
-	"github.com/yourorg/go-server/static"
+	"github.com/gnemade360/go-server/filter"
+	"github.com/gnemade360/go-server/health"
+	"github.com/gnemade360/go-server/metrics"
+	"github.com/gnemade360/go-server/middleware"
+	"github.com/gnemade360/go-server/router"
+	"github.com/gnemade360/go-server/static"
 )
 
 // Re‑export selected types so existing callers continue to compile.
@@ -24,6 +26,18 @@ type (
 	StaticOptions         = router.StaticOptions
 	TemplateData          = static.TemplateData
 	TemplateStaticHandler = static.TemplateStaticHandler
+	HealthChecker         = health.HealthChecker
+	HealthResponse        = health.HealthResponse
+	HealthCheck           = health.Check
+	Status                = health.Status
+	MetricsRegistry       = metrics.Registry
+	MetricsCounter        = metrics.Counter
+	MetricsGauge          = metrics.Gauge
+	MetricsHistogram      = metrics.Histogram
+	MetricsHTTPMetrics    = metrics.HTTPMetrics
+	RateLimitConfig       = middleware.RateLimitConfig
+	LoggingConfig         = middleware.LoggingConfig
+	LogEntry              = middleware.LogEntry
 )
 
 // Option is a function that modifies a Server
@@ -71,6 +85,15 @@ type Server struct {
 	// Filter manager
 	filterManager *filter.FilterManager
 
+	// Health checker
+	healthChecker *health.ServerHealthChecker
+
+	// Metrics registry
+	metricsRegistry *metrics.Registry
+	
+	// HTTP metrics collector
+	httpMetrics *metrics.HTTPMetrics
+
 	// Timeout for the server's operation
 	timeout time.Duration
 }
@@ -99,24 +122,32 @@ func DefaultServerConfig() ServerConfig {
 // NewServer creates a new Server instance with default configuration
 func NewServer() *Server {
 	config := DefaultServerConfig()
+	metricsRegistry := metrics.NewRegistry()
 	return &Server{
 		Config:            config,
 		httpServer:        &http.Server{Addr: config.Addr, ReadHeaderTimeout: 15 * time.Second},
 		router:            router.NewRouter(),
 		middlewareManager: &middleware.MiddlewareManager{},
 		filterManager:     &filter.FilterManager{},
+		healthChecker:     health.NewServerHealthChecker(),
+		metricsRegistry:   metricsRegistry,
+		httpMetrics:       metrics.NewHTTPMetrics(metricsRegistry),
 		timeout:           config.Timeout,
 	}
 }
 
 // NewServerWithConfig creates a new Server instance with the provided configuration
 func NewServerWithConfig(config ServerConfig) *Server {
+	metricsRegistry := metrics.NewRegistry()
 	return &Server{
 		Config:            config,
 		httpServer:        &http.Server{Addr: config.Addr, ReadHeaderTimeout: 15 * time.Second},
 		router:            router.NewRouter(),
 		middlewareManager: &middleware.MiddlewareManager{},
 		filterManager:     &filter.FilterManager{},
+		healthChecker:     health.NewServerHealthChecker(),
+		metricsRegistry:   metricsRegistry,
+		httpMetrics:       metrics.NewHTTPMetrics(metricsRegistry),
 		timeout:           config.Timeout,
 	}
 }
@@ -129,6 +160,39 @@ func (s *Server) Router() *router.Router {
 // SetRouter sets the router for this server
 func (s *Server) SetRouter(r *router.Router) {
 	s.router = r
+}
+
+// Health returns the health checker for this server
+func (s *Server) Health() *health.ServerHealthChecker {
+	return s.healthChecker
+}
+
+// Metrics returns the metrics registry for this server
+func (s *Server) Metrics() *metrics.Registry {
+	return s.metricsRegistry
+}
+
+// HTTPMetrics returns the HTTP metrics collector for this server
+func (s *Server) HTTPMetrics() *metrics.HTTPMetrics {
+	return s.httpMetrics
+}
+
+// AddHealthRoutes adds health check endpoints to the server router
+func (s *Server) AddHealthRoutes() {
+	s.router.Get("/health", s.healthChecker.Handler())
+	s.router.Get("/health/ready", s.healthChecker.ReadinessHandler())
+	s.router.Get("/health/live", health.LivenessHandler())
+}
+
+// AddMetricsRoutes adds metrics endpoints to the server router
+func (s *Server) AddMetricsRoutes() {
+	s.router.Get("/metrics", s.metricsRegistry.Handler())
+	s.router.Get("/metrics/prometheus", s.metricsRegistry.PrometheusHandler())
+}
+
+// EnableHTTPMetrics adds HTTP metrics middleware to the server
+func (s *Server) EnableHTTPMetrics() {
+	s.middlewareManager.AddMiddleware(s.httpMetrics.Middleware())
 }
 
 // handlerChain builds the handler chain for the server
@@ -314,11 +378,37 @@ func GetDefaultConfig() ServerConfig {
 // Sub‑package exports for ease of use (optional):
 // ---------------------------------------------------------------------
 var (
-	NewFilterFn              = filter.NewFilterFn
-	Gzip                     = middleware.Gzip
-	CacheControl             = middleware.CacheControl
-	CORS                     = middleware.CORS
-	NewTemplateStaticHandler = static.NewTemplateStaticHandler
+	NewFilterFn                = filter.NewFilterFn
+	Gzip                       = middleware.Gzip
+	CacheControl               = middleware.CacheControl
+	CORS                       = middleware.CORS
+	RateLimit                  = middleware.RateLimit
+	RateLimitSimple            = middleware.RateLimitSimple
+	RateLimitByUserID          = middleware.RateLimitByUserID
+	RateLimitGlobal            = middleware.RateLimitGlobal
+	DefaultRateLimitConfig     = middleware.DefaultRateLimitConfig
+	StructuredLogging          = middleware.StructuredLogging
+	RequestLogging             = middleware.RequestLogging
+	RequestLoggingWithHeaders  = middleware.RequestLoggingWithHeaders
+	RequestLoggingSimple       = middleware.RequestLoggingSimple
+	DefaultLoggingConfig       = middleware.DefaultLoggingConfig
+	NewTemplateStaticHandler   = static.NewTemplateStaticHandler
+	NewServerHealthChecker     = health.NewServerHealthChecker
+	MemoryCheck                = health.MemoryCheck
+	GoroutineCheck             = health.GoroutineCheck
+	HTTPCheck                  = health.HTTPCheck
+	DatabaseCheck              = health.DatabaseCheck
+	CustomCheck                = health.CustomCheck
+	StatusUp                   = health.StatusUp
+	StatusDown                 = health.StatusDown
+	StatusWarning              = health.StatusWarning
+	NewMetricsRegistry         = metrics.NewRegistry
+	NewMetricsCounter          = metrics.NewCounter
+	NewMetricsGauge            = metrics.NewGauge
+	NewMetricsHistogram        = metrics.NewHistogram
+	NewHTTPMetrics             = metrics.NewHTTPMetrics
+	MetricsHandler             = metrics.Handler
+	MetricsPrometheusHandler   = metrics.PrometheusHandler
 )
 
 // SecureJoinPath safely joins a base directory with a relative path and returns an absolute path.

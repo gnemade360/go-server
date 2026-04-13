@@ -9,13 +9,14 @@ A lightweight, extensible HTTP server library for Go with built-in middleware su
 - Flexible routing with regex support
 - Static file serving with SPA support
 - WebSocket support
+- **Health monitoring and checks** with built-in endpoints
 - Configurable timeouts and server options
 - Production-ready with graceful shutdown
 
 ## Installation
 
 ```bash
-go get github.com/yourorg/go-server
+go get github.com/gnemade360/go-server
 ```
 
 ## Quick Start
@@ -28,7 +29,7 @@ import (
     "log"
     "net/http"
     
-    "github.com/yourorg/go-server"
+    "github.com/gnemade360/go-server"
 )
 
 func main() {
@@ -77,6 +78,60 @@ Static file serving with template support and SPA compatibility.
 
 ### WebSocket
 WebSocket support for real-time applications.
+
+### Health Monitoring
+Comprehensive health checking system with built-in and custom checks.
+
+## Health Monitoring
+
+The server includes a built-in health monitoring system with multiple endpoints:
+
+```go
+server := goserver.NewServer()
+
+// Add health routes
+server.AddHealthRoutes()
+
+// Add custom health checks
+server.Health().AddDatabaseCheck("primary", func() error {
+    return db.Ping()
+})
+
+server.Health().AddExternalServiceCheck("api", "https://api.example.com/health")
+```
+
+### Health Endpoints
+
+- `GET /health` - Comprehensive health status with all checks
+- `GET /health/ready` - Readiness check for load balancers
+- `GET /health/live` - Simple liveness check
+
+### Built-in Health Checks
+
+- **Memory Usage**: Monitor memory consumption with configurable limits
+- **Goroutine Count**: Track goroutine leaks and resource usage
+- **HTTP Dependencies**: Check external service availability
+- **Database Connectivity**: Monitor database connection health
+- **Custom Checks**: Add application-specific health logic
+
+Example health response:
+```json
+{
+  "status": "UP",
+  "timestamp": "2023-12-07T10:30:00Z",
+  "checks": {
+    "memory": {
+      "status": "UP",
+      "message": "Memory usage: 45 MB",
+      "details": {"alloc_mb": 45, "max_memory_mb": 512}
+    }
+  },
+  "service_info": {
+    "version": "1.0.0",
+    "environment": "production"
+  }
+}
+```
 
 ## Configuration
 

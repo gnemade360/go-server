@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/yourorg/go-server/static"
+	"github.com/gnemade360/go-server/static"
 )
 
 func TestNewRouter(t *testing.T) {

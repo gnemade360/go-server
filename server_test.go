@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourorg/go-server/filter"
-	"github.com/yourorg/go-server/router"
-	"github.com/yourorg/go-server/static"
+	"github.com/gnemade360/go-server/filter"
+	"github.com/gnemade360/go-server/router"
+	"github.com/gnemade360/go-server/static"
 )
 
 func TestNewServer(t *testing.T) {

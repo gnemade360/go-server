@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/yourorg/go-server/static"
+	"github.com/gnemade360/go-server/static"
 )
 
 type route struct {
@@ -60,6 +60,14 @@ func (r *Router) Get(pattern string, h http.HandlerFunc) {
 
 func (r *Router) Post(pattern string, h http.HandlerFunc) {
 	r.Handle(http.MethodPost, pattern, h)
+}
+
+func (r *Router) Put(pattern string, h http.HandlerFunc) {
+	r.Handle(http.MethodPut, pattern, h)
+}
+
+func (r *Router) Delete(pattern string, h http.HandlerFunc) {
+	r.Handle(http.MethodDelete, pattern, h)
 }
 
 // Static mounts an SPA-aware file handler under a regex that matches

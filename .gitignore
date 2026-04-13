@@ -31,6 +31,17 @@ go.work.sum
 .idea/
 # .vscode/
 
+# Compiled example binaries
+health-monitoring
+metrics-monitoring
+rate-limiting
+server-utilities
+structured-logging
+examples/*/[a-z]*[!.go]
+
+# Playwright MCP
+.playwright-mcp/
+
 # Project specific directories and symlinks
 .claude
 .claude/
