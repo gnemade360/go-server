@@ -8,7 +8,7 @@ A lightweight, extensible HTTP server library for Go with built-in middleware su
 - Built-in middleware system (CORS, Gzip, Cache Control, Recovery, Timeout)
 - Flexible routing with regex support
 - Static file serving with SPA support
-- WebSocket support
+- **Secure WebSocket support (RFC 6455)** with origin checking, pluggable auth, connection limits, rate limiting, ping/pong, hub/rooms, and graceful shutdown
 - **Health monitoring and checks** with built-in endpoints
 - Configurable timeouts and server options
 - Production-ready with graceful shutdown
@@ -77,7 +77,7 @@ Pre-processing filters for requests before they reach handlers.
 Static file serving with template support and SPA compatibility.
 
 ### WebSocket
-WebSocket support for real-time applications.
+RFC 6455 WebSocket handler with pluggable origin checking, authentication, connection limits, message rate limiting, codec, hub, and rooms. See the [WebSocket](#websocket) section below.
 
 ### Health Monitoring
 Comprehensive health checking system with built-in and custom checks.
@@ -176,6 +176,105 @@ server.Router().Static(goserver.StaticOptions{
     Prefix: "/static/",
 })
 ```
+
+## WebSocket
+
+The `websocket` package implements RFC 6455 on top of
+[`github.com/gorilla/websocket`](https://github.com/gorilla/websocket).
+Every concern lives in its own file and is hookable through `Config`;
+new behaviour is added by satisfying one of the small interfaces
+(`OriginChecker`, `Authenticator`, `ConnectionLimiter`,
+`MessageCodec`, `MessageRateLimiter`) without touching the upgrade
+flow. The handler is re-exported from the root package for a single-
+import setup.
+
+```go
+import goserver "github.com/gnemade360/go-server"
+
+ws := goserver.NewWebSocketHandler(goserver.WebSocketConfig{
+    Origin: goserver.WebSocketAllowOrigins("https://app.example.com"),
+    Auth:   goserver.WebSocketBearerTokenAuth(verifyFn),
+    OnConnect: func(c *goserver.WebSocketConn) error {
+        c.Handler().Hub().Room("lobby").Join(c)
+        return nil
+    },
+    OnMessage: func(c *goserver.WebSocketConn, m goserver.WebSocketMessage) error {
+        c.Handler().Hub().Room("lobby").PublishExcept(c, m)
+        return nil
+    },
+})
+
+server.Router().Get("/ws", ws.ServeHTTP)
+server.Health().AddCheck("websocket", ws.HealthCheck())
+ws.RegisterMetrics(server.Metrics())
+```
+
+### Security defaults
+
+Every default is restrictive; opt-out is explicit.
+
+| Concern                    | Default                          |
+|----------------------------|----------------------------------|
+| Origin check               | Same-origin (defeats CSWSH)      |
+| Authentication             | `DenyAll` — must set explicitly  |
+| Per-frame read limit       | 1 MiB                            |
+| Reassembly cap (cumulative)| 1 MiB                            |
+| Ping interval              | 30 s                             |
+| Pong deadline              | 60 s                             |
+| Handshake timeout          | 10 s                             |
+| Per-IP connection cap      | 10                               |
+| Global connection cap      | 1000                             |
+| permessage-deflate         | Disabled                         |
+| UTF-8 validation           | Enforced on text frames          |
+| JSON decoder depth         | 64 levels                        |
+| Concurrent writes          | Serialized under a mutex         |
+
+### Authentication
+
+`BearerTokenAuth` reads the token from `Authorization: Bearer …`, a
+`bearer.<token>` subprotocol entry, or `?access_token=` — in that
+order. The subprotocol path is the only browser-friendly way to
+carry a bearer header through the WebSocket API; pair it with a
+non-secret subprotocol name so the server can echo a non-secret
+value back:
+
+```js
+new WebSocket("wss://host/ws", ["chat.v1", "bearer." + token])
+```
+
+`CookieSessionAuth` reads a named cookie and resolves it through a
+lookup function. Pair it with `SameOriginChecker` (the default) and
+issue session cookies with the `__Host-` prefix to scope them to a
+single origin.
+
+### Hub, rooms, broadcast
+
+Each handler exposes a single in-process hub (lazy-created on first
+`Hub()` call) and any number of rooms.
+
+```go
+hub := ws.Hub()
+hub.Broadcast(websocket.Message{Type: websocket.TextMessage, Data: []byte("notice")})
+hub.Room("lobby").PublishExcept(sender, msg)
+hub.BroadcastFilter(msg, func(c *websocket.Conn) bool {
+    return c.Principal().ID != ""
+})
+```
+
+### Graceful shutdown
+
+`ws.Shutdown(ctx)` sends close code 1001 to every open connection,
+waits for them to drain (bounded by the context deadline), and
+stops the hub goroutine. Call it from your signal handler before
+`server.Shutdown`.
+
+### Example
+
+See [`examples/websocket-example`](examples/websocket-example/) for
+a runnable chat-style demo wired through router, health, and
+metrics.
+
+
 
 ## License
 
