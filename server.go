@@ -14,6 +14,7 @@ import (
 	"github.com/gnemade360/go-server/middleware"
 	"github.com/gnemade360/go-server/router"
 	"github.com/gnemade360/go-server/static"
+	"github.com/gnemade360/go-server/websocket"
 )
 
 // Re‑export selected types so existing callers continue to compile.
@@ -38,6 +39,20 @@ type (
 	RateLimitConfig       = middleware.RateLimitConfig
 	LoggingConfig         = middleware.LoggingConfig
 	LogEntry              = middleware.LogEntry
+
+	WebSocketHandler           = websocket.Handler
+	WebSocketConfig            = websocket.Config
+	WebSocketConn              = websocket.Conn
+	WebSocketConnRef           = websocket.ConnRef
+	WebSocketHub               = websocket.Hub
+	WebSocketRoom              = websocket.Room
+	WebSocketMessage           = websocket.Message
+	WebSocketPrincipal         = websocket.Principal
+	WebSocketOriginChecker     = websocket.OriginChecker
+	WebSocketAuthenticator     = websocket.Authenticator
+	WebSocketConnectionLimiter = websocket.ConnectionLimiter
+	WebSocketMessageCodec      = websocket.MessageCodec
+	WebSocketMessageRateLimiter = websocket.MessageRateLimiter
 )
 
 // Option is a function that modifies a Server
@@ -409,6 +424,20 @@ var (
 	NewHTTPMetrics             = metrics.NewHTTPMetrics
 	MetricsHandler             = metrics.Handler
 	MetricsPrometheusHandler   = metrics.PrometheusHandler
+
+	NewWebSocketHandler             = websocket.NewHandler
+	WebSocketAllowOrigins           = websocket.AllowOrigins
+	WebSocketAllowAllOrigins        = websocket.AllowAllOrigins
+	WebSocketSameOrigin             = websocket.SameOriginChecker{}
+	WebSocketAllowAnonymous         = websocket.AllowAnonymous{}
+	WebSocketDenyAll                = websocket.DenyAll{}
+	WebSocketBearerTokenAuth        = websocket.BearerTokenAuth
+	WebSocketCookieSessionAuth      = websocket.CookieSessionAuth
+	NewWebSocketDefaultLimiter      = websocket.NewDefaultLimiter
+	NewWebSocketTokenBucketLimiter  = websocket.NewTokenBucketRateLimiter
+
+	WebSocketTextMessage   = websocket.TextMessage
+	WebSocketBinaryMessage = websocket.BinaryMessage
 )
 
 // SecureJoinPath safely joins a base directory with a relative path and returns an absolute path.
