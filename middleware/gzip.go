@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"compress/gzip"
-	"io"
 	"net/http"
 	"strings"
 )
@@ -12,12 +11,23 @@ import (
 // ----------------------------------------------------------------------------
 
 type gzipResponseWriter struct {
-	io.Writer
+	Writer *gzip.Writer
 	http.ResponseWriter
 }
 
 func (g gzipResponseWriter) Write(b []byte) (int, error) {
 	return g.Writer.Write(b)
+}
+
+// Flush pushes buffered compressed bytes to the client before flushing the
+// underlying writer, so streamed responses (SSE) are not held back by gzip.
+func (g gzipResponseWriter) Flush() {
+	_ = g.Writer.Flush()
+	_ = http.NewResponseController(g.ResponseWriter).Flush()
+}
+
+func (g gzipResponseWriter) Unwrap() http.ResponseWriter {
+	return g.ResponseWriter
 }
 
 func Gzip() Middleware {

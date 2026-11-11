@@ -79,6 +79,14 @@ func (rw *responseWriter) Write(data []byte) (int, error) {
 	return size, err
 }
 
+func (rw *responseWriter) Flush() {
+	_ = http.NewResponseController(rw.ResponseWriter).Flush()
+}
+
+func (rw *responseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
+}
+
 // Middleware returns an HTTP middleware that collects metrics
 func (hm *HTTPMetrics) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
