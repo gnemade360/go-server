@@ -91,6 +91,17 @@ func (rw *responseWriter) Write(data []byte) (int, error) {
 	return n, err
 }
 
+func (rw *responseWriter) Flush() {
+	if rw.status == 0 {
+		rw.status = http.StatusOK
+	}
+	_ = http.NewResponseController(rw.ResponseWriter).Flush()
+}
+
+func (rw *responseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
+}
+
 // StructuredLogging creates a middleware for structured request logging
 func StructuredLogging(config LoggingConfig) Middleware {
 	return func(next http.Handler) http.Handler {
