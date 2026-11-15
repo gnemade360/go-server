@@ -76,7 +76,10 @@ type responseRecorder struct {
 }
 
 func (r *responseRecorder) WriteHeader(code int) {
-	r.wroteHeader = true
+	isInformational := code < http.StatusOK && code != http.StatusSwitchingProtocols
+	if !isInformational {
+		r.wroteHeader = true
+	}
 	r.ResponseWriter.WriteHeader(code)
 }
 

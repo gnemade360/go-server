@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -67,5 +68,26 @@ func TestRecovery_FailedFlushThenPanicStillResponds500(t *testing.T) {
 	}
 	if writer.code != http.StatusInternalServerError || writer.body.String() != "internal server error" {
 		t.Errorf("expected 500 %q, got %d %q", "internal server error", writer.code, writer.body.String())
+	}
+}
+
+func TestRecovery_InformationalStatusThenPanicStillResponds500(t *testing.T) {
+	captureLog(t)
+	srv := httptest.NewServer(Recovery()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Link", "</style.css>; rel=preload")
+		w.WriteHeader(http.StatusEarlyHints)
+		panic("after early hints")
+	})))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("expected a 500 response, got error %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusInternalServerError || string(body) != "internal server error" {
+		t.Errorf("expected 500 %q, got %d %q", "internal server error", resp.StatusCode, body)
 	}
 }
