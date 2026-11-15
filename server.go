@@ -69,9 +69,8 @@ type ServerConfig struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 
-	// Operation timeout for the server
-	// If set, the server will automatically shut down after this duration
-	// Default is 3 minutes
+	// Timeout puts a deadline on each request's context through the Timeout
+	// middleware. Zero means no deadline.
 	Timeout time.Duration
 
 	// CORS configuration
@@ -119,7 +118,8 @@ type Server struct {
 
 const defaultShutdownTimeout = 10 * time.Second
 
-// DefaultOptions returns the default server options
+// DefaultOptions returns commonly used options: gzip and a 24h Cache-Control.
+// No constructor applies them; pass them to New or Configure to turn them on.
 func DefaultOptions() []Option {
 	return []Option{
 		WithMiddleware(middleware.Gzip()),
@@ -229,8 +229,9 @@ func (s *Server) handlerChain() http.Handler {
 // Start serves until ctx is cancelled or the server is shut down. When ctx is
 // cancelled, it shuts down gracefully, waiting up to the shutdown timeout
 // (10s unless WithShutdownTimeout says otherwise) for open requests, and
-// returns Shutdown's error, such as context.DeadlineExceeded. It returns nil
-// when Shutdown is called elsewhere.
+// returns Shutdown's error, such as context.DeadlineExceeded. When Shutdown is
+// called elsewhere, Start returns nil as soon as the shutdown begins, before
+// open requests finish, so wait for that Shutdown call to return.
 func (s *Server) Start(ctx context.Context) error {
 	s.httpServer.Handler = s.handlerChain()
 	errCh := make(chan error, 1)

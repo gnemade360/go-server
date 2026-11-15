@@ -58,6 +58,8 @@ func (r *Router) SetMethodNotAllowedHandler(h http.Handler) {
 // Handle registers a full regex (if pattern starts with "^"), a path with
 // {name} or a final {name...} segment, or an exact path. Values of {name}
 // segments and of named regex groups are available through req.PathValue.
+// A {name} or {name...} segment never matches an empty value. Matching uses
+// the decoded req.URL.Path, so an encoded slash (%2F) splits a segment.
 // The first registered route that matches wins. Handle panics on a malformed
 // {name} pattern.
 func (r *Router) Handle(method, pattern string, h http.Handler) {
@@ -133,6 +135,10 @@ func (r *Router) Static(opts StaticOptions) {
 	r.Handle(http.MethodGet, pat, handler)
 }
 
+// ServeHTTP runs the first route that matches the request's method and path.
+// If the path matches only under other methods, it sets Allow and runs the
+// 405 handler; otherwise it runs the 404 handler. HEAD is not served by GET
+// routes, so HEAD on a GET-only path gets a 405.
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	for _, rt := range r.routes[req.Method] {
 		if rt.match(req) {
