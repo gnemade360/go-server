@@ -148,12 +148,89 @@ config := goserver.ServerConfig{
 server := goserver.NewServerWithConfig(config)
 ```
 
+## Routing
+
+A route pattern is an exact path, a path with `{name}` segments, or a regex
+that starts with `^`.
+
+```go
+r := server.Router()
+r.Get("/users/{id}", func(w http.ResponseWriter, req *http.Request) {
+    id := req.PathValue("id")
+    w.Write([]byte(id))
+})
+r.Get("/files/{path...}", func(w http.ResponseWriter, req *http.Request) {
+    w.Write([]byte(req.PathValue("path"))) // "a/b.txt" for /files/a/b.txt
+})
+r.Get(`^/orders/(?P<num>[0-9]+)$`, func(w http.ResponseWriter, req *http.Request) {
+    w.Write([]byte(req.PathValue("num")))
+})
+```
+
+- `{name}` matches one non-empty path segment. `{name...}` must be the last
+  segment and matches the rest of the path, which must not be empty.
+- Named regex groups are also read with `req.PathValue`.
+- When several routes match, the one registered first wins.
+- If the path matches a route only under other methods, the router answers
+  `405 Method Not Allowed` with an `Allow` header listing them. Otherwise it
+  answers `404`. HEAD is not served by GET routes, so a HEAD request to a
+  GET-only route gets a 405.
+
+To change those responses:
+
+```go
+r.SetNotFoundHandler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+    http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+}))
+r.SetMethodNotAllowedHandler(myHandler) // Allow is already set when it runs
+```
+
+Passing `nil` to either setter restores the default.
+
 ## Middleware
 
 No middleware is on by default: `New`, `NewServer` and `DefaultServerConfig`
 add no CORS, cache or gzip handling. Turn each one on through the
 `CORSOrigin`, `CacheDuration` and `EnableGzip` config fields or with
 `WithMiddleware`.
+
+### Order
+
+The first middleware added is the outermost one: it sees the request first
+and the response last. `Configure` adds the middleware from config fields
+(CORS, cache, gzip, timeout) before anything passed with `WithMiddleware`, so
+those sit outside it.
+
+Put `Recovery` before `StructuredLogging`. `StructuredLogging` logs a panic
+and then panics again, so something outside it has to recover.
+
+### Recovery
+
+`middleware.Recovery()` turns a handler panic into a plain-text
+`500 internal server error` and logs the value and stack. If the response has
+already started, it logs the panic and aborts the connection instead, so the
+client sees a cut-off response rather than one that looks complete.
+`RecoveryWithConfig` replaces the log or the response:
+
+```go
+import "github.com/gnemade360/go-server/middleware"
+
+server.Configure(":8080",
+    goserver.WithMiddleware(middleware.RecoveryWithConfig(middleware.RecoveryConfig{
+        Log: func(r *http.Request, recovered any, stack []byte) {
+            slog.Error("panic", "path", r.URL.Path, "value", recovered)
+        },
+        Respond: func(w http.ResponseWriter, r *http.Request, recovered any) {
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusInternalServerError)
+            w.Write([]byte(`{"error":"internal"}`))
+        },
+    })),
+    goserver.WithMiddleware(goserver.StructuredLogging(goserver.DefaultLoggingConfig())),
+)
+```
+
+`Respond` runs only when nothing has been written yet.
 
 Built-in middleware includes:
 
@@ -171,6 +248,29 @@ server.Configure(":8080",
     goserver.WithTimeout(30*time.Second),
 )
 ```
+
+## Shutdown
+
+`Start` serves until its context is cancelled. It then shuts down
+gracefully, waiting up to 10 seconds for open requests, and returns the
+result of `Shutdown`: `nil`, or `context.DeadlineExceeded` if requests were
+still running when time ran out. `WithShutdownTimeout` changes the wait; zero
+or less means no deadline.
+
+```go
+ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+defer stop()
+
+server.Configure(":8080", goserver.WithShutdownTimeout(30*time.Second))
+if err := server.Start(ctx); err != nil {
+    log.Fatal(err)
+}
+```
+
+If you call `server.Shutdown` yourself, `Start` returns `nil` as soon as the
+shutdown begins, before open requests finish. Wait for your own `Shutdown`
+call to return before exiting. Any other error from listening, such as a port
+already in use, is returned as is.
 
 ## Static Files
 
