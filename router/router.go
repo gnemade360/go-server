@@ -36,6 +36,25 @@ func defaultMethodNotAllowed(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 
+// SetNotFoundHandler sets the handler for requests whose path matches no
+// route. nil restores the default, http.NotFoundHandler.
+func (r *Router) SetNotFoundHandler(h http.Handler) {
+	if h == nil {
+		h = http.NotFoundHandler()
+	}
+	r.notFound = h
+}
+
+// SetMethodNotAllowedHandler sets the handler for requests whose path matches
+// a route only under other methods. The Allow header is already set when it
+// runs. nil restores the default, a plain-text 405.
+func (r *Router) SetMethodNotAllowedHandler(h http.Handler) {
+	if h == nil {
+		h = http.HandlerFunc(defaultMethodNotAllowed)
+	}
+	r.methodNotAllowed = h
+}
+
 // Handle registers a full regex (if pattern starts with "^"), a path with
 // {name} or a final {name...} segment, or an exact path. Values of {name}
 // segments and of named regex groups are available through req.PathValue.
