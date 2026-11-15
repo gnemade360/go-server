@@ -86,13 +86,18 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 }
 
 func (r *responseRecorder) Flush() {
-	r.wroteHeader = true
-	_ = http.NewResponseController(r.ResponseWriter).Flush()
+	err := http.NewResponseController(r.ResponseWriter).Flush()
+	if err == nil {
+		r.wroteHeader = true
+	}
 }
 
 func (r *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	r.wroteHeader = true
-	return http.NewResponseController(r.ResponseWriter).Hijack()
+	conn, rw, err := http.NewResponseController(r.ResponseWriter).Hijack()
+	if err == nil {
+		r.wroteHeader = true
+	}
+	return conn, rw, err
 }
 
 func (r *responseRecorder) Unwrap() http.ResponseWriter {
