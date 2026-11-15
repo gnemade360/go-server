@@ -150,6 +150,11 @@ server := goserver.NewServerWithConfig(config)
 
 ## Middleware
 
+No middleware is on by default: `New`, `NewServer` and `DefaultServerConfig`
+add no CORS, cache or gzip handling. Turn each one on through the
+`CORSOrigin`, `CacheDuration` and `EnableGzip` config fields or with
+`WithMiddleware`.
+
 Built-in middleware includes:
 
 - **CORS**: Cross-origin resource sharing

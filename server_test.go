@@ -139,14 +139,14 @@ func TestDefaultServerConfig(t *testing.T) {
 	if config.Addr != ":8080" {
 		t.Errorf("Expected default addr :8080, got %s", config.Addr)
 	}
-	if config.CORSOrigin != "*" {
-		t.Errorf("Expected default CORS origin *, got %s", config.CORSOrigin)
+	if config.CORSOrigin != "" {
+		t.Errorf("Expected default CORS origin to be empty, got %s", config.CORSOrigin)
 	}
-	if config.CacheDuration != 24*time.Hour {
-		t.Errorf("Expected default cache duration 24h, got %v", config.CacheDuration)
+	if config.CacheDuration != 0 {
+		t.Errorf("Expected default cache duration 0, got %v", config.CacheDuration)
 	}
-	if !config.EnableGzip {
-		t.Error("Expected default gzip to be enabled")
+	if config.EnableGzip {
+		t.Error("Expected default gzip to be disabled")
 	}
 }
 
@@ -495,14 +495,14 @@ func TestGetDefaultConfig(t *testing.T) {
 	if config.Addr != ":8080" {
 		t.Errorf("Expected default addr :8080, got %s", config.Addr)
 	}
-	if config.CORSOrigin != "*" {
-		t.Errorf("Expected default CORS origin *, got %s", config.CORSOrigin)
+	if config.CORSOrigin != "" {
+		t.Errorf("Expected default CORS origin to be empty, got %s", config.CORSOrigin)
 	}
-	if config.CacheDuration != 24*time.Hour {
-		t.Errorf("Expected default cache duration 24h, got %v", config.CacheDuration)
+	if config.CacheDuration != 0 {
+		t.Errorf("Expected default cache duration 0, got %v", config.CacheDuration)
 	}
-	if !config.EnableGzip {
-		t.Error("Expected default gzip to be enabled")
+	if config.EnableGzip {
+		t.Error("Expected default gzip to be disabled")
 	}
 }
 

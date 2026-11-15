@@ -121,16 +121,15 @@ func DefaultOptions() []Option {
 	}
 }
 
-// DefaultServerConfig returns a ServerConfig with default values
+// DefaultServerConfig returns a ServerConfig that listens on :8080 with no
+// middleware. CORS, cache headers and gzip stay off until the CORSOrigin,
+// CacheDuration and EnableGzip fields or WithMiddleware turn them on.
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
 		Addr: ":8080",
 		//IdleTimeout:   60 * time.Second,
 		//ReadTimeout:   15 * time.Second,
 		//WriteTimeout:  15 * time.Second,
-		CORSOrigin:    "*",
-		CacheDuration: 24 * time.Hour,
-		EnableGzip:    true,
 	}
 }
 
@@ -368,12 +367,13 @@ func (s *Server) SecureJoinPath(baseDir, relativePath string) (string, error) {
 	return absPath, nil
 }
 
-// For backward compatibility, create a global instance
+// defaultServer backs the package-level SecureJoinPath.
 var defaultServer = NewServer()
 
-// New creates a new server with default middlewares (Gzip, CacheControl)
+// New creates a new server on addr with the default configuration and the
+// given options. Each call returns a separate server.
 func New(addr string, opts ...Option) *Server {
-	return defaultServer.Configure(addr, opts...)
+	return NewServer().Configure(addr, opts...)
 }
 
 // NewWithConfig creates a new server with the provided configuration
