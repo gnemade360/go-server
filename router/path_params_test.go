@@ -140,6 +140,8 @@ func TestPathParam_InvalidPatternsPanic(t *testing.T) {
 		"/a/{id}/{id}",
 		"/a/{1x}",
 		"/a/{...}",
+		"a/{id}",
+		"{id}",
 	}
 	for _, pattern := range invalid {
 		t.Run(pattern, func(t *testing.T) {

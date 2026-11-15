@@ -61,7 +61,7 @@ func (r *Router) SetMethodNotAllowedHandler(h http.Handler) {
 // A {name} or {name...} segment never matches an empty value. Matching uses
 // the decoded req.URL.Path, so an encoded slash (%2F) splits a segment.
 // The first registered route that matches wins. Handle panics on a malformed
-// {name} pattern.
+// {name} pattern, including one that does not start with "/".
 func (r *Router) Handle(method, pattern string, h http.Handler) {
 	// override existing
 	for i, rt := range r.routes[method] {
@@ -224,7 +224,11 @@ type pathTemplate struct {
 var paramNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func mustParseTemplate(pattern string) *pathTemplate {
-	parts := strings.Split(strings.TrimPrefix(pattern, "/"), "/")
+	trimmed, hasRoot := strings.CutPrefix(pattern, "/")
+	if !hasRoot {
+		panic(fmt.Sprintf("router: pattern %q must start with /", pattern))
+	}
+	parts := strings.Split(trimmed, "/")
 	segments := make([]templateSegment, len(parts))
 	seenNames := make(map[string]bool, len(parts))
 	lastIndex := len(parts) - 1
