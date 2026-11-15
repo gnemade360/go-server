@@ -344,23 +344,16 @@ func (s *Server) SecureJoinPath(baseDir, relativePath string) (string, error) {
 	// Remove any leading slash from the relative path to ensure it's truly relative
 	relativePath = strings.TrimPrefix(relativePath, "/")
 
-	// Join the paths
-	joinedPath := filepath.Join(baseDir, relativePath)
-
-	// Convert to absolute path
-	absPath, err := filepath.Abs(joinedPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to get absolute path: %w", err)
-	}
-
-	// Convert base directory to absolute path for comparison
 	absBaseDir, err := filepath.Abs(baseDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute base directory: %w", err)
 	}
+	absPath := filepath.Join(absBaseDir, relativePath)
 
-	// Ensure the resulting path is within the base directory
-	if !strings.HasPrefix(absPath, absBaseDir) {
+	// A plain prefix check would let /srv/app-secrets pass for /srv/app.
+	rel, err := filepath.Rel(absBaseDir, absPath)
+	escapesBase := err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	if escapesBase {
 		return "", fmt.Errorf("path traversal detected: %s is not within %s", absPath, absBaseDir)
 	}
 
