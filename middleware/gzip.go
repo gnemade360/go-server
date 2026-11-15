@@ -73,7 +73,9 @@ func (g *gzipResponseWriter) Unwrap() http.ResponseWriter {
 func Gzip() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			acceptsGzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
+			isUpgrade := r.Header.Get("Upgrade") != ""
+			if !acceptsGzip || isUpgrade {
 				next.ServeHTTP(w, r)
 				return
 			}
