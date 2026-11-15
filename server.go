@@ -2,6 +2,7 @@ package goserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -111,7 +112,12 @@ type Server struct {
 
 	// Timeout for the server's operation
 	timeout time.Duration
+
+	// How long Start waits for open requests after its context is cancelled
+	shutdownTimeout time.Duration
 }
+
+const defaultShutdownTimeout = 10 * time.Second
 
 // DefaultOptions returns the default server options
 func DefaultOptions() []Option {
@@ -147,6 +153,7 @@ func NewServer() *Server {
 		metricsRegistry:   metricsRegistry,
 		httpMetrics:       metrics.NewHTTPMetrics(metricsRegistry),
 		timeout:           config.Timeout,
+		shutdownTimeout:   defaultShutdownTimeout,
 	}
 }
 
@@ -163,6 +170,7 @@ func NewServerWithConfig(config ServerConfig) *Server {
 		metricsRegistry:   metricsRegistry,
 		httpMetrics:       metrics.NewHTTPMetrics(metricsRegistry),
 		timeout:           config.Timeout,
+		shutdownTimeout:   defaultShutdownTimeout,
 	}
 }
 
@@ -218,7 +226,11 @@ func (s *Server) handlerChain() http.Handler {
 	return h
 }
 
-// Start starts the server
+// Start serves until ctx is cancelled or the server is shut down. When ctx is
+// cancelled, it shuts down gracefully, waiting up to the shutdown timeout
+// (10s unless WithShutdownTimeout says otherwise) for open requests, and
+// returns Shutdown's error, such as context.DeadlineExceeded. It returns nil
+// when Shutdown is called elsewhere.
 func (s *Server) Start(ctx context.Context) error {
 	s.httpServer.Handler = s.handlerChain()
 	errCh := make(chan error, 1)
@@ -226,10 +238,24 @@ func (s *Server) Start(ctx context.Context) error {
 	go func() { errCh <- s.httpServer.ListenAndServe() }()
 	select {
 	case <-ctx.Done():
-		return s.Shutdown(context.Background())
+		return s.shutdownWithTimeout()
 	case err := <-errCh:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
 		return err
 	}
+}
+
+func (s *Server) shutdownWithTimeout() error {
+	shutdownCtx := context.Background()
+	hasDeadline := s.shutdownTimeout > 0
+	if hasDeadline {
+		var cancel context.CancelFunc
+		shutdownCtx, cancel = context.WithTimeout(shutdownCtx, s.shutdownTimeout)
+		defer cancel()
+	}
+	return s.Shutdown(shutdownCtx)
 }
 
 // Shutdown gracefully shuts down the server
@@ -288,6 +314,15 @@ func WithTimeouts(idle, write, read time.Duration) Option {
 		s.httpServer.IdleTimeout = idle
 		s.httpServer.WriteTimeout = write
 		s.httpServer.ReadTimeout = read
+	}
+}
+
+// WithShutdownTimeout returns an option to set how long Start waits for open
+// requests after its context is cancelled. Zero or less means no deadline.
+// The default is 10s.
+func WithShutdownTimeout(d time.Duration) Option {
+	return func(s *Server) {
+		s.shutdownTimeout = d
 	}
 }
 
