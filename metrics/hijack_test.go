@@ -10,6 +10,21 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+func TestHTTPMetrics_UnwrapReturnsInnerWriter(t *testing.T) {
+	rec := httptest.NewRecorder()
+	handler := NewHTTPMetrics(NewRegistry()).Middleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		wrapped, ok := w.(interface{ Unwrap() http.ResponseWriter })
+		if !ok {
+			t.Fatal("wrapped writer does not implement Unwrap")
+		}
+		if wrapped.Unwrap() != rec {
+			t.Error("Unwrap did not return the inner writer")
+		}
+	}))
+
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+}
+
 func TestHTTPMetrics_AllowsWebSocketUpgrade(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	httpMetrics := NewHTTPMetrics(NewRegistry())
