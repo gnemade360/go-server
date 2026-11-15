@@ -33,10 +33,13 @@ func TestRecoveryWithConfig_CustomRespondBeforeWrite(t *testing.T) {
 	}
 }
 
-func TestRecoveryWithConfig_RespondSkippedAfterWrite(t *testing.T) {
+func TestRecoveryWithConfig_AfterWriteLogsAndAbortsWithoutRespond(t *testing.T) {
 	respondCalled := false
+	var loggedValue any
 	handler := RecoveryWithConfig(RecoveryConfig{
-		Log: func(*http.Request, any, []byte) {},
+		Log: func(_ *http.Request, recovered any, _ []byte) {
+			loggedValue = recovered
+		},
 		Respond: func(http.ResponseWriter, *http.Request, any) {
 			respondCalled = true
 		},
@@ -44,10 +47,15 @@ func TestRecoveryWithConfig_RespondSkippedAfterWrite(t *testing.T) {
 		w.Write([]byte("data: x\n\n"))
 		panic("mid-stream")
 	}))
-	rec := httptest.NewRecorder()
 
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stream", nil))
+	rec, recovered := serveRecorderAndRecover(handler)
 
+	if recovered != http.ErrAbortHandler {
+		t.Errorf("expected http.ErrAbortHandler, got %v", recovered)
+	}
+	if loggedValue != "mid-stream" {
+		t.Errorf("expected Log to get the original value, got %v", loggedValue)
+	}
 	if respondCalled {
 		t.Error("expected Respond not to be called once the response has started")
 	}

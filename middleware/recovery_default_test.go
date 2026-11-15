@@ -18,34 +18,35 @@ func captureLog(t *testing.T) *bytes.Buffer {
 	return &buf
 }
 
-func TestRecovery_PanicAfterWriteAppendsNothing(t *testing.T) {
+func TestRecovery_PanicAfterWriteAbortsWithoutAppending(t *testing.T) {
 	captureLog(t)
 	handler := Recovery()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("data: x\n\n"))
 		panic("mid-stream")
 	}))
-	rec := httptest.NewRecorder()
 
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stream", nil))
+	rec, recovered := serveRecorderAndRecover(handler)
 
-	if rec.Code != http.StatusOK {
-		t.Errorf("expected the status already sent (200), got %d", rec.Code)
+	if recovered != http.ErrAbortHandler {
+		t.Errorf("expected http.ErrAbortHandler, got %v", recovered)
 	}
 	if rec.Body.String() != "data: x\n\n" {
 		t.Errorf("expected body %q only, got %q", "data: x\n\n", rec.Body.String())
 	}
 }
 
-func TestRecovery_PanicAfterFlushAppendsNothing(t *testing.T) {
+func TestRecovery_PanicAfterFlushAbortsWithoutAppending(t *testing.T) {
 	captureLog(t)
 	handler := Recovery()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.NewResponseController(w).Flush()
 		panic("after flush")
 	}))
-	rec := httptest.NewRecorder()
 
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stream", nil))
+	rec, recovered := serveRecorderAndRecover(handler)
 
+	if recovered != http.ErrAbortHandler {
+		t.Errorf("expected http.ErrAbortHandler, got %v", recovered)
+	}
 	if rec.Body.Len() != 0 {
 		t.Errorf("expected an empty body, got %q", rec.Body.String())
 	}
@@ -102,6 +103,13 @@ func TestRecovery_DefaultResponseIsPlainText500(t *testing.T) {
 	if rec.Body.String() != "internal server error" {
 		t.Errorf("unexpected body %q", rec.Body.String())
 	}
+}
+
+func serveRecorderAndRecover(handler http.Handler) (rec *httptest.ResponseRecorder, recovered any) {
+	rec = httptest.NewRecorder()
+	defer func() { recovered = recover() }()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	return rec, nil
 }
 
 func serveAndRecover(handler http.Handler) (recovered any) {

@@ -24,10 +24,11 @@ func Recovery() Middleware {
 	return RecoveryWithConfig(RecoveryConfig{})
 }
 
-// RecoveryWithConfig recovers handler panics. Once the response has started,
-// it writes nothing more, so the client sees a cut-off response instead of
-// error text appended to a partial body. http.ErrAbortHandler is re-panicked
-// so net/http can abort the connection quietly.
+// RecoveryWithConfig recovers handler panics. Before the response has started,
+// it logs the panic and calls Respond. Once the response has started, it logs
+// the panic and re-panics with http.ErrAbortHandler, so net/http drops the
+// connection and the client sees a cut-off response instead of one that looks
+// complete. A panic with http.ErrAbortHandler is passed on without logging.
 func RecoveryWithConfig(cfg RecoveryConfig) Middleware {
 	logPanic := cfg.Log
 	if logPanic == nil {
@@ -50,7 +51,7 @@ func RecoveryWithConfig(cfg RecoveryConfig) Middleware {
 				}
 				logPanic(r, rec, debug.Stack())
 				if rw.wroteHeader {
-					return
+					panic(http.ErrAbortHandler)
 				}
 				respond(rw, r, rec)
 			}()

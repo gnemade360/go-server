@@ -425,10 +425,12 @@ func TestRecovery_AlreadyWrittenHeader(t *testing.T) {
 	log.SetOutput(&logBuf)
 	defer log.SetOutput(nil)
 
-	req := httptest.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-	wrapped.ServeHTTP(w, req)
+	w, recovered := serveRecorderAndRecover(wrapped)
 
+	// The response had started, so Recovery aborts instead of writing a 500
+	if recovered != http.ErrAbortHandler {
+		t.Errorf("Expected http.ErrAbortHandler, got %v", recovered)
+	}
 	// Status should remain as set by handler before panic
 	if w.Code != http.StatusAccepted {
 		t.Errorf("Expected status 202, got %d", w.Code)
