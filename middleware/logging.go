@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"bufio"
 	"encoding/json"
+	"net"
 	"net/http"
 	"time"
 )
@@ -96,6 +98,10 @@ func (rw *responseWriter) Flush() {
 		rw.status = http.StatusOK
 	}
 	_ = http.NewResponseController(rw.ResponseWriter).Flush()
+}
+
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return http.NewResponseController(rw.ResponseWriter).Hijack()
 }
 
 func (rw *responseWriter) Unwrap() http.ResponseWriter {

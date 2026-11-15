@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"bufio"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -81,6 +83,10 @@ func (rw *responseWriter) Write(data []byte) (int, error) {
 
 func (rw *responseWriter) Flush() {
 	_ = http.NewResponseController(rw.ResponseWriter).Flush()
+}
+
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return http.NewResponseController(rw.ResponseWriter).Hijack()
 }
 
 func (rw *responseWriter) Unwrap() http.ResponseWriter {

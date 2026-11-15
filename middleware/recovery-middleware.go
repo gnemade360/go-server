@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"bufio"
 	"log"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -34,6 +36,19 @@ type responseRecorder struct {
 func (r *responseRecorder) WriteHeader(code int) {
 	r.wroteHeader = true
 	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *responseRecorder) Flush() {
+	r.wroteHeader = true
+	_ = http.NewResponseController(r.ResponseWriter).Flush()
+}
+
+func (r *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return http.NewResponseController(r.ResponseWriter).Hijack()
+}
+
+func (r *responseRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
 }
 
 func LoggingMiddleware() Middleware {

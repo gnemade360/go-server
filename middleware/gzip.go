@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"bufio"
 	"compress/gzip"
+	"errors"
+	"net"
 	"net/http"
 	"strings"
 )
@@ -9,6 +12,8 @@ import (
 // ----------------------------------------------------------------------------
 // Gzip – transparent response compression
 // ----------------------------------------------------------------------------
+
+var errGzipHijack = errors.New("middleware: cannot hijack a gzip-compressed response")
 
 type gzipResponseWriter struct {
 	Writer *gzip.Writer
@@ -24,6 +29,12 @@ func (g gzipResponseWriter) Write(b []byte) (int, error) {
 func (g gzipResponseWriter) Flush() {
 	_ = g.Writer.Flush()
 	_ = http.NewResponseController(g.ResponseWriter).Flush()
+}
+
+// Hijack refuses because the deferred gzip Close would write onto a connection
+// the handler now owns.
+func (g gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return nil, nil, errGzipHijack
 }
 
 func (g gzipResponseWriter) Unwrap() http.ResponseWriter {
