@@ -309,13 +309,16 @@ func TestRouterServeHTTPMethodNotFound(t *testing.T) {
 
 	r.Handle("GET", "/test", handler)
 
-	// Test POST to GET route (should be not found)
+	// Test POST to GET route (path exists for another method)
 	req := httptest.NewRequest("POST", "/test", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Errorf("Expected status 404, got %d", w.Code)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("Expected status 405, got %d", w.Code)
+	}
+	if allow := w.Header().Get("Allow"); allow != "GET" {
+		t.Errorf("Expected Allow header GET, got %q", allow)
 	}
 }
 

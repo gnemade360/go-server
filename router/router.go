@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/gnemade360/go-server/static"
@@ -18,15 +19,21 @@ type route struct {
 }
 
 type Router struct {
-	routes   map[string][]route // method → list of (literal|regex) routes
-	notFound http.Handler
+	routes           map[string][]route // method → list of (literal|regex) routes
+	notFound         http.Handler
+	methodNotAllowed http.Handler
 }
 
 func NewRouter() *Router {
 	return &Router{
-		routes:   make(map[string][]route),
-		notFound: http.NotFoundHandler(),
+		routes:           make(map[string][]route),
+		notFound:         http.NotFoundHandler(),
+		methodNotAllowed: http.HandlerFunc(defaultMethodNotAllowed),
 	}
+}
+
+func defaultMethodNotAllowed(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 
 // Handle registers a full regex (if pattern starts with "^"), a path with
@@ -114,7 +121,44 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	r.notFound.ServeHTTP(w, req)
+	allowed := r.allowedMethods(req)
+	if len(allowed) == 0 {
+		r.notFound.ServeHTTP(w, req)
+		return
+	}
+	w.Header().Set("Allow", strings.Join(allowed, ", "))
+	r.methodNotAllowed.ServeHTTP(w, req)
+}
+
+// allowedMethods lists, sorted, the other methods with a route matching the
+// request path. It runs only after no route matched the request's method.
+func (r *Router) allowedMethods(req *http.Request) []string {
+	var allowed []string
+	for method, routes := range r.routes {
+		if method == req.Method {
+			continue
+		}
+		for _, rt := range routes {
+			if rt.matchesPath(req.URL.Path) {
+				allowed = append(allowed, method)
+				break
+			}
+		}
+	}
+	slices.Sort(allowed)
+	return allowed
+}
+
+// matchesPath reports whether the route matches path, without setting path
+// values on the request.
+func (rt route) matchesPath(path string) bool {
+	switch {
+	case rt.template != nil:
+		return rt.template.walk(path, nil)
+	case rt.pattern == nil:
+		return path == rt.literal
+	}
+	return rt.pattern.MatchString(path)
 }
 
 // match reports whether the route matches req, and on a match sets the
