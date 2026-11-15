@@ -10,22 +10,22 @@ import (
 
 // LogEntry represents a structured log entry for HTTP requests
 type LogEntry struct {
-	Timestamp      time.Time         `json:"timestamp"`
-	Method         string            `json:"method"`
-	URL            string            `json:"url"`
-	Protocol       string            `json:"protocol"`
-	Status         int               `json:"status"`
-	StatusText     string            `json:"status_text"`
-	ResponseSize   int               `json:"response_size"`
-	Duration       time.Duration     `json:"duration_ns"`
-	DurationMS     float64           `json:"duration_ms"`
-	RemoteAddr     string            `json:"remote_addr"`
-	UserAgent      string            `json:"user_agent"`
-	Referer        string            `json:"referer"`
-	RequestID      string            `json:"request_id,omitempty"`
-	Headers        map[string]string `json:"headers,omitempty"`
-	Query          map[string]string `json:"query,omitempty"`
-	ErrorMessage   string            `json:"error,omitempty"`
+	Timestamp    time.Time         `json:"timestamp"`
+	Method       string            `json:"method"`
+	URL          string            `json:"url"`
+	Protocol     string            `json:"protocol"`
+	Status       int               `json:"status"`
+	StatusText   string            `json:"status_text"`
+	ResponseSize int               `json:"response_size"`
+	Duration     time.Duration     `json:"duration_ns"`
+	DurationMS   float64           `json:"duration_ms"`
+	RemoteAddr   string            `json:"remote_addr"`
+	UserAgent    string            `json:"user_agent"`
+	Referer      string            `json:"referer"`
+	RequestID    string            `json:"request_id,omitempty"`
+	Headers      map[string]string `json:"headers,omitempty"`
+	Query        map[string]string `json:"query,omitempty"`
+	ErrorMessage string            `json:"error,omitempty"`
 }
 
 // LoggingConfig holds configuration for request logging
@@ -113,30 +113,30 @@ func StructuredLogging(config LoggingConfig) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			
+
 			// Wrap response writer to capture status and size
 			wrapped := &responseWriter{ResponseWriter: w}
-			
+
 			// Handle panics and log them
 			defer func() {
 				if rec := recover(); rec != nil {
 					wrapped.status = http.StatusInternalServerError
-					
+
 					entry := createLogEntry(r, wrapped, start, config)
 					if recStr, ok := rec.(string); ok {
 						entry.ErrorMessage = recStr
 					} else {
 						entry.ErrorMessage = "panic occurred during request processing"
 					}
-					
+
 					config.LogHandler(entry)
 					panic(rec) // Re-panic to let recovery middleware handle it
 				}
 			}()
-			
+
 			// Process request
 			next.ServeHTTP(wrapped, r)
-			
+
 			// Log the completed request
 			entry := createLogEntry(r, wrapped, start, config)
 			config.LogHandler(entry)
@@ -147,7 +147,7 @@ func StructuredLogging(config LoggingConfig) Middleware {
 // createLogEntry creates a log entry from request and response information
 func createLogEntry(r *http.Request, w *responseWriter, start time.Time, config LoggingConfig) LogEntry {
 	duration := time.Since(start)
-	
+
 	entry := LogEntry{
 		Timestamp:    start,
 		Method:       r.Method,
@@ -160,22 +160,22 @@ func createLogEntry(r *http.Request, w *responseWriter, start time.Time, config 
 		DurationMS:   float64(duration.Nanoseconds()) / 1e6,
 		RemoteAddr:   r.RemoteAddr,
 	}
-	
+
 	// Extract User-Agent if configured
 	if config.IncludeUserAgent {
 		entry.UserAgent = r.Header.Get("User-Agent")
 	}
-	
+
 	// Extract Referer if configured
 	if config.IncludeReferer {
 		entry.Referer = r.Header.Get("Referer")
 	}
-	
+
 	// Extract Request ID if configured
 	if config.RequestIDHeader != "" {
 		entry.RequestID = r.Header.Get(config.RequestIDHeader)
 	}
-	
+
 	// Include headers if configured
 	if config.IncludeHeaders && len(config.HeadersToLog) > 0 {
 		entry.Headers = make(map[string]string)
@@ -185,7 +185,7 @@ func createLogEntry(r *http.Request, w *responseWriter, start time.Time, config 
 			}
 		}
 	}
-	
+
 	// Include query parameters if configured
 	if config.IncludeQuery && len(r.URL.Query()) > 0 {
 		entry.Query = make(map[string]string)
@@ -195,7 +195,7 @@ func createLogEntry(r *http.Request, w *responseWriter, start time.Time, config 
 			}
 		}
 	}
-	
+
 	return entry
 }
 
@@ -221,9 +221,9 @@ func RequestLoggingSimple() Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			wrapped := &responseWriter{ResponseWriter: w}
-			
+
 			next.ServeHTTP(wrapped, r)
-			
+
 			duration := time.Since(start)
 			println(
 				start.Format("2006-01-02 15:04:05"),

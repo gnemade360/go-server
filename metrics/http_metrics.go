@@ -10,12 +10,12 @@ import (
 
 // HTTPMetrics holds metrics for HTTP requests
 type HTTPMetrics struct {
-	registry         *Registry
-	requestsTotal    *Counter
-	requestDuration  *Histogram
-	requestSize      *Histogram
-	responseSize     *Histogram
-	activeRequests   *Gauge
+	registry        *Registry
+	requestsTotal   *Counter
+	requestDuration *Histogram
+	requestSize     *Histogram
+	responseSize    *Histogram
+	activeRequests  *Gauge
 }
 
 // NewHTTPMetrics creates a new HTTPMetrics instance
@@ -23,13 +23,13 @@ func NewHTTPMetrics(registry *Registry) *HTTPMetrics {
 	if registry == nil {
 		registry = defaultRegistry
 	}
-	
+
 	// Default histogram buckets for request duration (in seconds)
 	durationBuckets := []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}
-	
+
 	// Default histogram buckets for request/response size (in bytes)
 	sizeBuckets := []float64{64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}
-	
+
 	return &HTTPMetrics{
 		registry: registry,
 		requestsTotal: registry.NewCounter(
@@ -98,50 +98,50 @@ func (hm *HTTPMetrics) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			
+
 			// Increment active requests
 			hm.activeRequests.Inc()
 			defer hm.activeRequests.Dec()
-			
+
 			// Wrap the response writer
 			rw := &responseWriter{
 				ResponseWriter: w,
 				statusCode:     200, // Default status code
 			}
-			
+
 			// Record request size
 			if r.ContentLength > 0 {
 				hm.requestSize.Observe(float64(r.ContentLength))
 			}
-			
+
 			// Call the next handler
 			next.ServeHTTP(rw, r)
-			
+
 			// Record metrics after request completion
 			duration := time.Since(start).Seconds()
 			hm.requestDuration.Observe(duration)
-			
+
 			// Record response size
 			if rw.size > 0 {
 				hm.responseSize.Observe(float64(rw.size))
 			}
-			
+
 			// Increment base request counter
 			hm.requestsTotal.Inc()
-			
+
 			// Increment request counter with labels
 			labels := map[string]string{
 				"method": r.Method,
 				"status": strconv.Itoa(rw.statusCode),
 				"path":   sanitizePath(r.URL.Path),
 			}
-			
+
 			hm.registry.NewCounter(
 				"http_requests_total",
 				"Total number of HTTP requests",
 				labels,
 			).Inc()
-			
+
 			// Record duration with labels
 			hm.registry.NewHistogram(
 				"http_request_duration_seconds",
@@ -162,13 +162,13 @@ func (hm *HTTPMetrics) MiddlewareFunc(next http.HandlerFunc) http.HandlerFunc {
 // GetMetrics returns HTTP-specific metrics
 func (hm *HTTPMetrics) GetMetrics() map[string]*Metric {
 	metrics := make(map[string]*Metric)
-	
+
 	metrics["requests_total"] = hm.requestsTotal.ToMetric()
 	metrics["request_duration"] = hm.requestDuration.ToMetric()
 	metrics["request_size"] = hm.requestSize.ToMetric()
 	metrics["response_size"] = hm.responseSize.ToMetric()
 	metrics["active_requests"] = hm.activeRequests.ToMetric()
-	
+
 	return metrics
 }
 
@@ -177,14 +177,14 @@ func sanitizePath(path string) string {
 	if path == "" {
 		return "/"
 	}
-	
+
 	// For metrics, we might want to normalize paths with IDs
 	// This is a simple implementation - in production you might want
 	// more sophisticated path normalization
 	if len(path) > 50 {
 		return "/long_path"
 	}
-	
+
 	return path
 }
 
