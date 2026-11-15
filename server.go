@@ -40,18 +40,18 @@ type (
 	LoggingConfig         = middleware.LoggingConfig
 	LogEntry              = middleware.LogEntry
 
-	WebSocketHandler           = websocket.Handler
-	WebSocketConfig            = websocket.Config
-	WebSocketConn              = websocket.Conn
-	WebSocketConnRef           = websocket.ConnRef
-	WebSocketHub               = websocket.Hub
-	WebSocketRoom              = websocket.Room
-	WebSocketMessage           = websocket.Message
-	WebSocketPrincipal         = websocket.Principal
-	WebSocketOriginChecker     = websocket.OriginChecker
-	WebSocketAuthenticator     = websocket.Authenticator
-	WebSocketConnectionLimiter = websocket.ConnectionLimiter
-	WebSocketMessageCodec      = websocket.MessageCodec
+	WebSocketHandler            = websocket.Handler
+	WebSocketConfig             = websocket.Config
+	WebSocketConn               = websocket.Conn
+	WebSocketConnRef            = websocket.ConnRef
+	WebSocketHub                = websocket.Hub
+	WebSocketRoom               = websocket.Room
+	WebSocketMessage            = websocket.Message
+	WebSocketPrincipal          = websocket.Principal
+	WebSocketOriginChecker      = websocket.OriginChecker
+	WebSocketAuthenticator      = websocket.Authenticator
+	WebSocketConnectionLimiter  = websocket.ConnectionLimiter
+	WebSocketMessageCodec       = websocket.MessageCodec
 	WebSocketMessageRateLimiter = websocket.MessageRateLimiter
 )
 
@@ -105,7 +105,7 @@ type Server struct {
 
 	// Metrics registry
 	metricsRegistry *metrics.Registry
-	
+
 	// HTTP metrics collector
 	httpMetrics *metrics.HTTPMetrics
 
@@ -393,48 +393,48 @@ func GetDefaultConfig() ServerConfig {
 // Sub‑package exports for ease of use (optional):
 // ---------------------------------------------------------------------
 var (
-	NewFilterFn                = filter.NewFilterFn
-	Gzip                       = middleware.Gzip
-	CacheControl               = middleware.CacheControl
-	CORS                       = middleware.CORS
-	RateLimit                  = middleware.RateLimit
-	RateLimitSimple            = middleware.RateLimitSimple
-	RateLimitByUserID          = middleware.RateLimitByUserID
-	RateLimitGlobal            = middleware.RateLimitGlobal
-	DefaultRateLimitConfig     = middleware.DefaultRateLimitConfig
-	StructuredLogging          = middleware.StructuredLogging
-	RequestLogging             = middleware.RequestLogging
-	RequestLoggingWithHeaders  = middleware.RequestLoggingWithHeaders
-	RequestLoggingSimple       = middleware.RequestLoggingSimple
-	DefaultLoggingConfig       = middleware.DefaultLoggingConfig
-	NewTemplateStaticHandler   = static.NewTemplateStaticHandler
-	NewServerHealthChecker     = health.NewServerHealthChecker
-	MemoryCheck                = health.MemoryCheck
-	GoroutineCheck             = health.GoroutineCheck
-	HTTPCheck                  = health.HTTPCheck
-	DatabaseCheck              = health.DatabaseCheck
-	CustomCheck                = health.CustomCheck
-	StatusUp                   = health.StatusUp
-	StatusDown                 = health.StatusDown
-	StatusWarning              = health.StatusWarning
-	NewMetricsRegistry         = metrics.NewRegistry
-	NewMetricsCounter          = metrics.NewCounter
-	NewMetricsGauge            = metrics.NewGauge
-	NewMetricsHistogram        = metrics.NewHistogram
-	NewHTTPMetrics             = metrics.NewHTTPMetrics
-	MetricsHandler             = metrics.Handler
-	MetricsPrometheusHandler   = metrics.PrometheusHandler
+	NewFilterFn               = filter.NewFilterFn
+	Gzip                      = middleware.Gzip
+	CacheControl              = middleware.CacheControl
+	CORS                      = middleware.CORS
+	RateLimit                 = middleware.RateLimit
+	RateLimitSimple           = middleware.RateLimitSimple
+	RateLimitByUserID         = middleware.RateLimitByUserID
+	RateLimitGlobal           = middleware.RateLimitGlobal
+	DefaultRateLimitConfig    = middleware.DefaultRateLimitConfig
+	StructuredLogging         = middleware.StructuredLogging
+	RequestLogging            = middleware.RequestLogging
+	RequestLoggingWithHeaders = middleware.RequestLoggingWithHeaders
+	RequestLoggingSimple      = middleware.RequestLoggingSimple
+	DefaultLoggingConfig      = middleware.DefaultLoggingConfig
+	NewTemplateStaticHandler  = static.NewTemplateStaticHandler
+	NewServerHealthChecker    = health.NewServerHealthChecker
+	MemoryCheck               = health.MemoryCheck
+	GoroutineCheck            = health.GoroutineCheck
+	HTTPCheck                 = health.HTTPCheck
+	DatabaseCheck             = health.DatabaseCheck
+	CustomCheck               = health.CustomCheck
+	StatusUp                  = health.StatusUp
+	StatusDown                = health.StatusDown
+	StatusWarning             = health.StatusWarning
+	NewMetricsRegistry        = metrics.NewRegistry
+	NewMetricsCounter         = metrics.NewCounter
+	NewMetricsGauge           = metrics.NewGauge
+	NewMetricsHistogram       = metrics.NewHistogram
+	NewHTTPMetrics            = metrics.NewHTTPMetrics
+	MetricsHandler            = metrics.Handler
+	MetricsPrometheusHandler  = metrics.PrometheusHandler
 
-	NewWebSocketHandler             = websocket.NewHandler
-	WebSocketAllowOrigins           = websocket.AllowOrigins
-	WebSocketAllowAllOrigins        = websocket.AllowAllOrigins
-	WebSocketSameOrigin             = websocket.SameOriginChecker{}
-	WebSocketAllowAnonymous         = websocket.AllowAnonymous{}
-	WebSocketDenyAll                = websocket.DenyAll{}
-	WebSocketBearerTokenAuth        = websocket.BearerTokenAuth
-	WebSocketCookieSessionAuth      = websocket.CookieSessionAuth
-	NewWebSocketDefaultLimiter      = websocket.NewDefaultLimiter
-	NewWebSocketTokenBucketLimiter  = websocket.NewTokenBucketRateLimiter
+	NewWebSocketHandler            = websocket.NewHandler
+	WebSocketAllowOrigins          = websocket.AllowOrigins
+	WebSocketAllowAllOrigins       = websocket.AllowAllOrigins
+	WebSocketSameOrigin            = websocket.SameOriginChecker{}
+	WebSocketAllowAnonymous        = websocket.AllowAnonymous{}
+	WebSocketDenyAll               = websocket.DenyAll{}
+	WebSocketBearerTokenAuth       = websocket.BearerTokenAuth
+	WebSocketCookieSessionAuth     = websocket.CookieSessionAuth
+	NewWebSocketDefaultLimiter     = websocket.NewDefaultLimiter
+	NewWebSocketTokenBucketLimiter = websocket.NewTokenBucketRateLimiter
 
 	WebSocketTextMessage   = websocket.TextMessage
 	WebSocketBinaryMessage = websocket.BinaryMessage
