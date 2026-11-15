@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -360,10 +359,7 @@ func TestRecovery(t *testing.T) {
 
 	wrapped := mw(handler)
 
-	// Capture log output
-	var logBuf bytes.Buffer
-	log.SetOutput(&logBuf)
-	defer log.SetOutput(nil)
+	logBuf := captureLog(t)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -420,10 +416,7 @@ func TestRecovery_AlreadyWrittenHeader(t *testing.T) {
 
 	wrapped := mw(handler)
 
-	// Capture log output
-	var logBuf bytes.Buffer
-	log.SetOutput(&logBuf)
-	defer log.SetOutput(nil)
+	captureLog(t)
 
 	w, recovered := serveRecorderAndRecover(wrapped)
 
@@ -465,10 +458,7 @@ func TestLoggingMiddleware(t *testing.T) {
 
 	wrapped := mw(handler)
 
-	// Capture log output
-	var logBuf bytes.Buffer
-	log.SetOutput(&logBuf)
-	defer log.SetOutput(nil)
+	logBuf := captureLog(t)
 
 	req := httptest.NewRequest("GET", "/test", nil)
 	w := httptest.NewRecorder()

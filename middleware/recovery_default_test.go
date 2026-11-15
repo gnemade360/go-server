@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 )
@@ -13,8 +12,9 @@ import (
 func captureLog(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	var buf bytes.Buffer
+	prev := log.Writer()
 	log.SetOutput(&buf)
-	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	t.Cleanup(func() { log.SetOutput(prev) })
 	return &buf
 }
 

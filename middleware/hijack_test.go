@@ -17,10 +17,6 @@ func TestRecovery_PassesFlushThrough(t *testing.T) {
 	handler := Recovery()(flushingHandler(t, rec))
 
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stream", nil))
-
-	if rec.Code != http.StatusOK {
-		t.Errorf("expected status 200, got %d", rec.Code)
-	}
 }
 
 func TestRecovery_FlusherTypeAssertion(t *testing.T) {

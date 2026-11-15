@@ -20,10 +20,17 @@ func freeAddr(t *testing.T) string {
 	return addr
 }
 
-func waitUntilListening(t *testing.T, addr string) {
+// waitUntilListening fails fast if Start returns first, for example because
+// another process took the port between freeAddr and Start.
+func waitUntilListening(t *testing.T, addr string, startErr <-chan error) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
+		select {
+		case err := <-startErr:
+			t.Fatalf("Start returned before listening on %s: %v", addr, err)
+		default:
+		}
 		conn, err := net.Dial("tcp", addr)
 		if err == nil {
 			conn.Close()
@@ -50,7 +57,7 @@ func startWithBlockingRoute(t *testing.T, server *Server, ctx context.Context) (
 	})
 	startErr = make(chan error, 1)
 	go func() { startErr <- server.Start(ctx) }()
-	waitUntilListening(t, addr)
+	waitUntilListening(t, addr, startErr)
 	go func() {
 		resp, err := http.Get("http://" + addr + "/block")
 		if err == nil {
@@ -59,6 +66,8 @@ func startWithBlockingRoute(t *testing.T, server *Server, ctx context.Context) (
 	}()
 	select {
 	case <-requestStarted:
+	case err := <-startErr:
+		t.Fatalf("Start returned before the blocking request arrived: %v", err)
 	case <-time.After(2 * time.Second):
 		t.Fatal("blocking request did not reach the handler")
 	}
@@ -124,7 +133,7 @@ func TestStart_ReturnsNilWhenShutdownIsCalledElsewhere(t *testing.T) {
 	server.Configure(addr)
 	startErr := make(chan error, 1)
 	go func() { startErr <- server.Start(context.Background()) }()
-	waitUntilListening(t, addr)
+	waitUntilListening(t, addr, startErr)
 
 	if err := server.Shutdown(context.Background()); err != nil {
 		t.Fatalf("Shutdown failed: %v", err)
