@@ -187,6 +187,43 @@ r.SetMethodNotAllowedHandler(myHandler) // Allow is already set when it runs
 
 Passing `nil` to either setter restores the default.
 
+## Errors
+
+Package `httperr` gives handlers one error shape. Each error carries an HTTP status, a stable code and a message that is safe to show the client:
+
+```json
+{"error": {"code": "not_found", "message": "order 42 not found"}}
+```
+
+| Constructor | Status | Code |
+|---|---|---|
+| `BadRequest(msg)` | 400 | `bad_request` (the request cannot be read) |
+| `Invalid(msg)` | 400 | `invalid` (a domain rule is broken) |
+| `Unauthorized(msg)` | 401 | `unauthorized` |
+| `Forbidden(msg)` | 403 | `forbidden` |
+| `NotFound(msg)` | 404 | `not_found` |
+| `Conflict(msg)` | 409 | `conflict` |
+| `Internal(cause)` | 500 | `internal` |
+
+`New(status, code, msg)` adds your own code. `WithCause(err)` keeps the underlying error for logs and `errors.Is`; it is never sent. `httperr.Write(w, err)` finds the `*httperr.Error` in err's chain and writes it. Any other error becomes a 500, and every 5xx answers with `"internal error"`, so no internal detail reaches the client.
+
+Domain code keeps its own error types and does not import `httperr`. Map them in one place in the HTTP adapter:
+
+```go
+func (h *Handlers) fail(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		err = httperr.NotFound("order not found").WithCause(err)
+	case errors.Is(err, domain.ErrAlreadyPlaced):
+		err = httperr.Conflict("order already placed").WithCause(err)
+	}
+	if e := httperr.From(err); e.Status >= http.StatusInternalServerError {
+		h.log.Error("request failed", "error", err)
+	}
+	httperr.Write(w, err)
+}
+```
+
 ## Middleware
 
 No middleware is on by default: `New`, `NewServer` and `DefaultServerConfig`
