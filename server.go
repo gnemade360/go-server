@@ -264,8 +264,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
-// ListenAndServe starts the server and blocks until it's stopped
+// ListenAndServe serves with the router, filters and middleware until the
+// server is shut down. Prefer Start, which also shuts down when ctx is cancelled.
 func (s *Server) ListenAndServe() error {
+	s.httpServer.Handler = s.handlerChain()
 	return s.httpServer.ListenAndServe()
 }
 
